@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>JSON-RPC Demo for JQuery Terminal Emulator</title>
+    <script src="js/jquery-1.7.1.min.js"></script>
+    <script src="js/jquery.mousewheel-min.js"></script>
+    <script src="js/jquery.terminal-min.js"></script>
+    <link href="css/jquery.terminal.css" rel="stylesheet"/>
+    </head>
+<body>
+
+<script>
+
+  var CRaSH = {};
+
+  //
+  CRaSH.socket = null;
+  CRaSH.connect = (function(host){
+    if ('WebSocket' in window) {
+      CRaSH.socket = new WebSocket(host);
+    } else if ('MozWebSocket' in window) {
+      CRaSH.socket = new MozWebSocket(host);
+    } else {
+      Console.log('Error: WebSocket is not supported by this browser.');
+      return;
+    }
+    CRaSH.socket.onopen = function () {
+        Console.log('Info: WebSocket connection opened.');
+/*
+        document.getElementById('chat').onkeydown = function(event) {
+        if (event.keyCode == 13) {
+          CRaSH.sendMessage();
+          }
+        };
+*/
+      };
+    CRaSH.socket.onclose = function () {
+      Console.log('Info: WebSocket closed.');
+    };
+    CRaSH.socket.onmessage = function (message) {
+      Console.log(message.data);
+    };
+  });
+
+  //
+  CRaSH.initialize = function() {
+    var path = window.location.pathname;
+    var ctx = path.substring(0, path.indexOf('/', 1));
+    var protocol;
+    if (window.location.protocol == 'http:') {
+      protocol = 'ws';
+    } else {
+      protocol = 'wss';
+    }
+    var url = protocol + '://' + window.location.host + ctx + '/crash';
+    alert(url);
+    CRaSH.connect(url);
+  };
+
+  //
+  CRaSH.initialize();
+
+  //
+  $(function() {
+    $('#term_demo').terminal(function(command, term) {
+      var socket = CRaSH.socket;
+      alert(socket);
+      if (socket != null) {
+        socket.send(command);
+      }
+//      if (command == 'test') {
+//        term.echo("you just typed 'test'");
+//      } else {
+//        term.echo('unknown command');
+//      }
+    }, {
+      greetings: 'Javascript Interpreter',
+      name: 'js_demo',
+      height: 400,
+      width: 800,
+      prompt: 'js> '});
+  });
+
+  var Console = {};
+  Console.log = (function(message) {
+    alert(message);
+  });
+
+</script>
+
+  <div id="term_demo"></div>
+
+</body>
+</html>

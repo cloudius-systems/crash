@@ -1,0 +1,28 @@
+<cloudbees-web-app>
+
+ <!-- deploy with : bees app:deploy -a vietj/crash target/crash.war -->
+   <!-- deploy with : bees app:deploy -t tomcat7 -a vietj/crash target/crash.war -->
+ <!-- test with   : bees app:run target/crash.war  -->
+
+  <!--
+
+  bees app:deploy -t tomcat7 -RPLUGIN.SRC.tomcat7=https://community.ci.cloudbees.com/job/tomcat8-clickstack/lastSuccessfulBuild/artifact/build/distributions/tomcat8-clickstack-1.0.0-SNAPSHOT.zip -t tomcat7 -a vietj/crash target/crash.war
+  bees app:run -t tomcat7 -RPLUGIN.SRC.tomcat7=https://community.ci.cloudbees.com/job/tomcat8-clickstack/lastSuccessfulBuild/artifact/build/distributions/tomcat8-clickstack-1.0.0-SNAPSHOT.zip -t tomcat7 target/crash.war
+
+  -->
+
+
+ <appid>vietj/crash</appid>
+<!--
+ <resource name="jdbc/BEES_DB_NAME" auth="Container" type="javax.sql.DataSource">
+  <param name="username" value="BEES_DB_USER" />
+  <param name="password" value="BEES_DB_PASS" />
+  <param name="url" value="jdbc:cloudbees://BEES_DB_NAME" />
+ </resource>
+-->
+  <resource name="jdbc/crash" auth="Container" type="javax.sql.DataSource">
+    <param name="username" value="crash" />
+    <param name="password" value="crash" />
+    <param name="url" value="jdbc:cloudbees://crash" />
+  </resource>
+</cloudbees-web-app>
