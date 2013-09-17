@@ -5,13 +5,15 @@
     <title>JSON-RPC Demo for JQuery Terminal Emulator</title>
     <script src="js/jquery-1.7.1.min.js"></script>
     <script src="js/jquery.mousewheel-min.js"></script>
-    <script src="js/jquery.terminal-min.js"></script>
+    <script src="js/jquery.terminal-0.7.6.js"></script>
     <link href="css/jquery.terminal.css" rel="stylesheet"/>
     </head>
 <body>
 
 <script>
 
+
+  var cls = "\033[2J\033[1;1H";
   var CRaSH = {};
 
   //
@@ -26,25 +28,85 @@
       return;
     }
     CRaSH.socket.onopen = function () {
-        Console.log('Info: WebSocket connection opened.');
-/*
-        document.getElementById('chat').onkeydown = function(event) {
-        if (event.keyCode == 13) {
-          CRaSH.sendMessage();
-          }
-        };
-*/
-      };
+      Console.log('Info: WebSocket connection opened.');
+      CRaSH.terminal.resume();
+    };
     CRaSH.socket.onclose = function () {
       Console.log('Info: WebSocket closed.');
+      CRaSH.terminal.pause();
     };
     CRaSH.socket.onmessage = function (message) {
-      Console.log(message.data);
+      var event = $.parseJSON(message.data);
+      var type = event.type;
+      if (type == "print") {
+        var text = event.data;
+        while (true) {
+          var index = text.indexOf(cls);
+          if (index == -1) {
+            break;
+          } else {
+            CRaSH.terminal.echo(text.substring(0, index));
+            CRaSH.terminal.clear();
+            text = text.substring(index + cls.length, text.length);
+          }
+        }
+        CRaSH.terminal.echo(text);
+      } else if (type == "prompt") {
+        CRaSH.terminal.set_prompt(event.data);
+      } else if (type == "end") {
+        CRaSH.terminal.resume();
+      } else if (type == "complete") {
+        var c = CRaSH.completion;
+        var completions = event.data;
+        for (var i = 0; i < completions.length; i++) {
+          completions[i] = c.string + completions[i];
+        }
+        c.callback(completions);
+      }
     };
   });
 
   //
-  CRaSH.initialize = function() {
+  CRaSH.initialize = function($) {
+
+    // Create a paused terminal
+    var terminal = $('#term_demo').terminal(function (command, term) {
+      var socket = CRaSH.socket;
+      if (socket != null) {
+        var event = {
+          type: "execute",
+          width: term.cols(),
+          height: term.rows(),
+          command: command
+        };
+        socket.send(JSON.stringify(event));
+        term.pause();
+      }
+    }, {
+      greetings: '',
+      name: 'crash',
+      enabled: false,
+      height: 400,
+      width: 800,
+      prompt: '',
+      tabcompletion: true,
+      completion: function(term, string, callback) {
+        var prefix = term.get_command();
+        CRaSH.completion = {
+          callback: callback,
+          prefix: prefix,
+          string: string
+        };
+        CRaSH.socket.send(JSON.stringify({type: "complete",prefix:prefix}));
+      },
+      keypress: function(event, term) {
+        if (event.keyCode == 3) {
+          CRaSH.socket.send(JSON.stringify({type: "cancel"}));
+        }
+      }
+    });
+
+    // Create web socket url
     var path = window.location.pathname;
     var ctx = path.substring(0, path.indexOf('/', 1));
     var protocol;
@@ -54,37 +116,25 @@
       protocol = 'wss';
     }
     var url = protocol + '://' + window.location.host + ctx + '/crash';
-    alert(url);
+
+    // Set state and connect
+    CRaSH.terminal = terminal;
     CRaSH.connect(url);
   };
 
-  //
-  CRaSH.initialize();
+
 
   //
   $(function() {
-    $('#term_demo').terminal(function(command, term) {
-      var socket = CRaSH.socket;
-      alert(socket);
-      if (socket != null) {
-        socket.send(command);
-      }
-//      if (command == 'test') {
-//        term.echo("you just typed 'test'");
-//      } else {
-//        term.echo('unknown command');
-//      }
-    }, {
-      greetings: 'Javascript Interpreter',
-      name: 'js_demo',
-      height: 400,
-      width: 800,
-      prompt: 'js> '});
+
+    //
+    CRaSH.initialize($);
+
   });
 
   var Console = {};
   Console.log = (function(message) {
-    alert(message);
+//    alert(message);
   });
 
 </script>
