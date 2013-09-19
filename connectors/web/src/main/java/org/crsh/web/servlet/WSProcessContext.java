@@ -5,11 +5,13 @@ import org.crsh.shell.ShellProcessContext;
 import org.crsh.shell.ShellResponse;
 import org.crsh.text.CLS;
 import org.crsh.text.Chunk;
+import org.crsh.text.Color;
 import org.crsh.text.Style;
 import org.crsh.text.Text;
 import org.crsh.util.Safe;
 
 import java.io.IOException;
+import java.util.EnumMap;
 
 /** @author Julien Viet */
 public class WSProcessContext implements ShellProcessContext {
@@ -77,17 +79,71 @@ public class WSProcessContext implements ShellProcessContext {
     return height;
   }
 
+  private static final EnumMap<Color, String> COLOR_MAP = new EnumMap<Color, String>(Color.class);
+
+  static {
+    COLOR_MAP.put(Color.black, "#000");
+    COLOR_MAP.put(Color.blue, "#0000AA");
+    COLOR_MAP.put(Color.cyan, "#00AAAA");
+    COLOR_MAP.put(Color.green, "#00AA00");
+    COLOR_MAP.put(Color.magenta, "#AA00AA");
+    COLOR_MAP.put(Color.white, "#AAAAAA");
+    COLOR_MAP.put(Color.yellow, "#AAAA00");
+    COLOR_MAP.put(Color.red, "#AA0000");
+  }
+
+  /** . */
+  private Style style = Style.reset;
+
   public void write(Chunk chunk) throws IOException {
-    if (chunk instanceof Text) {
-      Text text = (Text)chunk;
-      buffer.append(text.getText());
-    } else if (chunk instanceof Style) {
-      ((Style)chunk).writeAnsiTo(buffer);
-    } else if (chunk instanceof CLS) {
-      buffer.append("\033[");
-      buffer.append("2J");
-      buffer.append("\033[");
-      buffer.append("1;1H");
+
+    // TODO : handle Color.def
+
+    if (chunk instanceof Style) {
+      style = style.merge((Style)chunk);
+    } else {
+      if (chunk instanceof Text) {
+        Text text = (Text)chunk;
+        CharSequence chars = text.getText();
+        int length = chars.length();
+        if (length > 0) {
+          if (style.equals(Style.reset)) {
+            buffer.append(chars);
+          } else {
+            Style.Composite composite = (Style.Composite)style;
+            buffer.append("[[");
+            if (composite.getUnderline() == Boolean.TRUE) {
+              buffer.append('u');
+            }
+            if (composite.getBold() == Boolean.TRUE) {
+              buffer.append('b');
+            }
+            buffer.append(';');
+            if (composite.getForeground() != null) {
+              buffer.append(COLOR_MAP.get(composite.getForeground()));
+            }
+            buffer.append(';');
+            if (composite.getBackground() != null) {
+              buffer.append(COLOR_MAP.get(composite.getBackground()));
+            }
+            buffer.append(']');
+            for (int i = 0;i < length;i++) {
+              char c = chars.charAt(i);
+              if (c == ']') {
+                buffer.append("\\]");
+              } else {
+                buffer.append(c);
+              }
+            }
+            buffer.append(']');
+          }
+        }
+      } else if (chunk instanceof CLS) {
+        buffer.append("\033[");
+        buffer.append("2J");
+        buffer.append("\033[");
+        buffer.append("1;1H");
+      }
     }
   }
 
